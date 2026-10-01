@@ -113,6 +113,19 @@ final class APIClientTests: XCTestCase {
         XCTAssertEqual(StubURLProtocol.requests.first?.httpMethod, "PATCH")
     }
 
+    func testSignOutRefreshesAnExpiredTokenBeforeRevoking() async {
+        let tokens = InMemoryTokenStore(TokenPair(accessToken: "expired", refreshToken: "refresh-1", expiresAt: Date().addingTimeInterval(-60)))
+        StubURLProtocol.replies["/auth/native/refresh"] = [
+            .init(status: 200, body: #"{"access_token":"fresh","refresh_token":"refresh-2","expires_in":900}"#),
+        ]
+        StubURLProtocol.replies["/auth/native/token"] = [.init(status: 204, body: "")]
+        await makeClient(tokens: tokens).signOut()
+        XCTAssertEqual(StubURLProtocol.requests.map { $0.url!.path }, ["/auth/native/refresh", "/auth/native/token"])
+        XCTAssertEqual(StubURLProtocol.requests.last?.httpMethod, "DELETE")
+        XCTAssertEqual(StubURLProtocol.requests.last?.value(forHTTPHeaderField: "Authorization"), "Bearer fresh")
+        XCTAssertNil(tokens.load())
+    }
+
     func testExchangeStoresTokens() async throws {
         let tokens = InMemoryTokenStore()
         StubURLProtocol.replies["/auth/native/token"] = [

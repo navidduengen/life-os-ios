@@ -1,11 +1,12 @@
 import Foundation
 
-/// URLs and requests of the native login flow. The backend side does not
-/// exist yet; the contract is described in `docs/backend-vertrag.md`.
+/// URLs and requests of the native login flow. The backend side is
+/// implemented in life-os-prototype (`NativeAuthController`,
+/// `NativeAppTokens`); the contract is described in `docs/backend-vertrag.md`.
 ///
 /// 1. The app opens `authorizeURL` in `ASWebAuthenticationSession` (never in a
-///    WebView). The server runs its normal login (WorkOS today, Pocket ID
-///    after the cutover) and redirects to `lifeos://auth/callback?code=…&state=…`.
+///    WebView). The server runs its normal web login (whatever ADR-031-004
+///    currently provides), asks to confirm the device and redirects to `lifeos://auth/callback?code=…&state=…`.
 /// 2. The app exchanges the one-time code plus PKCE verifier for a token pair.
 public struct NativeAuth: Sendable {
     public static let callbackScheme = "lifeos"

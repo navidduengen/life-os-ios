@@ -33,10 +33,14 @@ public final class APIClient: LifeOSService, @unchecked Sendable {
         tokens.save(response.pair())
     }
 
+    /// Revokes the device on the server, then forgets the tokens. The access
+    /// token lives 15 minutes, so it is refreshed first if needed: with an
+    /// expired one the server would answer 401 and keep the refresh token valid.
     public func signOut() async {
-        if var request = try? makeRequest("DELETE", "auth/native/token", body: Optional<String>.none),
-           let current = tokens.load() {
-            request.setValue("Bearer \(current.accessToken)", forHTTPHeaderField: "Authorization")
+        if tokens.load() != nil,
+           let token = try? await refresher.validAccessToken(),
+           var request = try? makeRequest("DELETE", "auth/native/token", body: Optional<String>.none) {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             _ = try? await urlSession.data(for: request)
         }
         tokens.save(nil)
