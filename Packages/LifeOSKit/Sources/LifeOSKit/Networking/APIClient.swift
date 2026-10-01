@@ -72,6 +72,10 @@ public final class APIClient: LifeOSService, @unchecked Sendable {
         try await authorizedData(makeRequest("POST", "tasks", body: task))
     }
 
+    public func createNote(_ note: NewNote) async throws -> CreatedNote {
+        try await authorizedData(makeRequest("POST", "notes", body: note))
+    }
+
     public func transitionTask(id: String, to status: TaskStatus) async throws -> LifeTask {
         struct Body: Encodable { let status: TaskStatus }
         return try await authorizedData(makeRequest("PATCH", "tasks/\(id)/transition", body: Body(status: status)))
@@ -138,6 +142,56 @@ public final class APIClient: LifeOSService, @unchecked Sendable {
         struct Sent: Decodable { let devices: Int }
         let sent: Sent = try await authorizedData(makeRequest("POST", "push/test", body: Optional<String>.none))
         return sent.devices
+    }
+
+    // MARK: - Vault
+
+    public func vaultStatus() async throws -> VaultStatus {
+        try await get("vault")
+    }
+
+    public func registerVaultDeviceKey(publicKey: String, deviceName: String) async throws -> String {
+        struct Body: Encodable { let publicKey: String; let deviceName: String }
+        struct Created: Decodable { let credentialId: String }
+        let created: Created = try await authorizedData(makeRequest("POST", "vault/device-key", body: Body(publicKey: publicKey, deviceName: deviceName)))
+        return created.credentialId
+    }
+
+    public func vaultChallenge(apps: [String]?) async throws -> VaultChallenge {
+        struct Body: Encodable { let apps: [String]? }
+        return try await authorizedData(makeRequest("POST", "vault/challenge", body: Body(apps: apps)))
+    }
+
+    public func unlockVault(challengeId: String, credentialId: String, signature: String) async throws -> [String: Date] {
+        struct Body: Encodable { let challengeId: String; let credentialId: String; let signature: String }
+        struct Unlocked: Decodable { let apps: [String: Date] }
+        let unlocked: Unlocked = try await authorizedData(makeRequest("POST", "vault/unlock", body: Body(challengeId: challengeId, credentialId: credentialId, signature: signature)))
+        return unlocked.apps
+    }
+
+    public func lockVault(app: String?) async throws {
+        struct Body: Encodable { let app: String? }
+        try await authorizedNoContent(makeRequest("POST", "vault/lock", body: Body(app: app)))
+    }
+
+    public func financeDocuments() async throws -> [FinanceDocument] {
+        try await get("finance/documents")
+    }
+
+    public func labReports() async throws -> [LabReport] {
+        try await get("health/lab-reports")
+    }
+
+    public func documents(app: String?, query: String?) async throws -> DocumentList {
+        var items: [URLQueryItem] = []
+        if let app { items.append(URLQueryItem(name: "app", value: app)) }
+        if let query, !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
+        return try await authorized(makeRequest("GET", "documents", query: items, body: Optional<String>.none))
+    }
+
+    public func documentFileURL(documentId: String, versionId: String) async throws -> URL {
+        let link: DocumentFileLink = try await get("documents/\(documentId)/versions/\(versionId)/file")
+        return link.url
     }
 
     // MARK: - Plumbing

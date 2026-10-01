@@ -47,6 +47,7 @@ targets:
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_ENTITLEMENTS: App/LifeOS.entitlements
         "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]": App/LifeOS-Mac.entitlements
+        INFOPLIST_KEY_NSFaceIDUsageDescription: "Life OS nutzt Face ID, um Health und Finance zu entsperren."
         INFOPLIST_KEY_NSHealthShareUsageDescription: "Life OS liest die Apple-Health-Daten, die du in den Einstellungen auswählst, und überträgt sie an deinen eigenen Life-OS-Server."
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: "Life OS schreibt nichts in Apple Health."
         INFOPLIST_KEY_NSHealthClinicalHealthRecordsShareUsageDescription: "Life OS liest die Gesundheitsakten, die du freigibst, und überträgt sie an deinen eigenen Life-OS-Server."

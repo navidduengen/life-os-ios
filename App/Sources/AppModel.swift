@@ -15,6 +15,8 @@ final class AppModel {
     private(set) var user: UserSession?
     private(set) var modules: [AppModule] = []
     private(set) var isDemo = false
+    /// Bumped after each quick capture, so lists such as the inbox reload.
+    var captureCount = 0
     var loginError: String?
     var isSigningIn = false
 
@@ -29,6 +31,8 @@ final class AppModel {
     @ObservationIgnored let health = HealthSyncManager()
     /// Push notifications; stays inert while the server has push switched off.
     @ObservationIgnored let push = PushManager()
+    /// Unlock state of Health and Finance; the server decides.
+    let vault = VaultManager()
     /// Path a notification asked to open (`/productivity`, `/calendar`, …); the tab views follow it.
     var requestedRoute: String?
 
@@ -42,6 +46,8 @@ final class AppModel {
         health.serviceProvider = { [weak self] in self?.service ?? DemoService() }
         push.serviceProvider = { [weak self] in self?.service ?? DemoService() }
         push.openRoute = { [weak self] route in self?.requestedRoute = route }
+        vault.serviceProvider = { [weak self] in self?.service ?? DemoService() }
+        vault.isDemo = { [weak self] in self?.isDemo ?? false }
         // Set here, not in a view, so a tap that launches the app is not lost.
         AppDelegate.push = push
     }
@@ -57,6 +63,11 @@ final class AppModel {
     /// Apps for the launcher (kind `app`), in web launcher order.
     var apps: [AppModule] {
         AppModuleCatalog.sorted(modules.filter { $0.kind == .app })
+    }
+
+    /// The Apps grid on iPhone: the apps plus Dokumente, which has no tab of its own.
+    var launcherApps: [AppModule] {
+        modules.filter { $0.id == "documents" } + apps
     }
 
     func start() async {
@@ -119,6 +130,7 @@ final class AppModel {
         user = nil
         modules = []
         health.resetForNewAccount()
+        vault.reset()
         service = DemoService()
         phase = .signedOut
     }
@@ -131,6 +143,8 @@ final class AppModel {
             self.modules = try await modules
             phase = .signedIn
             await push.refresh()
+            // pairs the Secure Enclave key while the server still allows it after sign-in
+            await vault.refresh()
         } catch {
             loginError = (error as? APIError)?.message ?? "Konto konnte nicht geladen werden."
             phase = .signedOut
