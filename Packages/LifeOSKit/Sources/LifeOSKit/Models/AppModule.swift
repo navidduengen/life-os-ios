@@ -57,6 +57,7 @@ public enum AppModuleCatalog {
         switch id {
         case "today": AppModuleStyle(order: 0, symbol: "sun.max", accent: .orange, tagline: nil)
         case "inbox": AppModuleStyle(order: 5, symbol: "tray", accent: .slate, tagline: nil)
+        case "documents": AppModuleStyle(order: 6, symbol: "doc.on.doc", accent: .slate, tagline: "Alle Dokumente")
         case "study": AppModuleStyle(order: 10, symbol: "graduationcap", accent: .indigo, tagline: "Studium & Lernen")
         case "productivity": AppModuleStyle(order: 20, symbol: "checklist", accent: .orange, tagline: "Projekte & To-dos")
         case "calendar": AppModuleStyle(order: 25, symbol: "calendar", accent: .teal, tagline: "Termine & Abos")

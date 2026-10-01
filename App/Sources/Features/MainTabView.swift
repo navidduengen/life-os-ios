@@ -15,7 +15,7 @@ struct MainTabView: View {
 }
 
 enum Destination: Hashable {
-    case today, tasks, calendar, inbox, apps
+    case today, tasks, calendar, inbox, documents, apps
     case app(String)
 
     /// Where a notification's `route` leads.
@@ -25,6 +25,7 @@ enum Destination: Hashable {
         case "/productivity": self = .tasks
         case "/calendar": self = .calendar
         case "/inbox": self = .inbox
+        case "/documents": self = .documents
         default:
             if route.hasPrefix("/health") { self = .app("health") } else { return nil }
         }
@@ -55,7 +56,10 @@ private struct TabLayout: View {
         }
         .onChange(of: model.requestedRoute, initial: true) { _, route in
             guard let route, let destination = Destination(route: route) else { return }
-            if case .app = destination { selection = .apps } else { selection = destination }
+            switch destination {
+            case .app, .documents: selection = .apps
+            default: selection = destination
+            }
             model.requestedRoute = nil
         }
     }
@@ -66,7 +70,7 @@ private struct SidebarLayout: View {
     @State private var selection: Destination? = .today
 
     /// Apps that already have their own sidebar entry above.
-    private let builtIn: Set<String> = ["today", "inbox", "productivity", "calendar"]
+    private let builtIn: Set<String> = ["today", "inbox", "documents", "productivity", "calendar"]
 
     var body: some View {
         NavigationSplitView {
@@ -74,6 +78,7 @@ private struct SidebarLayout: View {
                 Section {
                     Label("Heute", systemImage: "sun.max").tag(Destination.today)
                     Label("Posteingang", systemImage: "tray").tag(Destination.inbox)
+                    Label("Dokumente", systemImage: "doc.on.doc").tag(Destination.documents)
                     Label("Aufgaben", systemImage: "checklist").tag(Destination.tasks)
                     Label("Kalender", systemImage: "calendar").tag(Destination.calendar)
                 }
@@ -89,6 +94,7 @@ private struct SidebarLayout: View {
                 }
             }
             .navigationTitle("Life OS")
+            .toolbar { ToolbarItem(placement: .primaryAction) { QuickCaptureButton(withShortcut: true) } }
         } detail: {
             NavigationStack {
                 switch selection ?? .today {
@@ -96,6 +102,7 @@ private struct SidebarLayout: View {
                 case .tasks: TasksView()
                 case .calendar: CalendarView()
                 case .inbox: InboxView()
+                case .documents: DocumentsView()
                 case let .app(id):
                     if let app = model.modules.first(where: { $0.id == id }) {
                         AppDestination(module: app)

@@ -9,6 +9,7 @@ public protocol LifeOSService: Sendable {
     func tasks(status: TaskStatus?, page: Int) async throws -> PaginatedEnvelope<LifeTask>
     func createTask(_ task: NewTask) async throws -> LifeTask
     func transitionTask(id: String, to status: TaskStatus) async throws -> LifeTask
+    func createNote(_ note: NewNote) async throws -> CreatedNote
     /// `month` as `YYYY-MM`.
     func calendar(month: String) async throws -> CalendarResponse
     func inbox() async throws -> InboxResponse
@@ -33,5 +34,9 @@ public protocol LifeOSService: Sendable {
     func lockVault(app: String?) async throws
     func financeDocuments() async throws -> [FinanceDocument]
     func labReports() async throws -> [LabReport]
+    /// Documents of all apps; `query` also searches the extracted text.
+    func documents(app: String?, query: String?) async throws -> DocumentList
+    /// A short-lived signed link to the file of a version.
+    func documentFileURL(documentId: String, versionId: String) async throws -> URL
     func signOut() async
 }

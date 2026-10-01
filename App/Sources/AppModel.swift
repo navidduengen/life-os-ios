@@ -15,6 +15,8 @@ final class AppModel {
     private(set) var user: UserSession?
     private(set) var modules: [AppModule] = []
     private(set) var isDemo = false
+    /// Bumped after each quick capture, so lists such as the inbox reload.
+    var captureCount = 0
     var loginError: String?
     var isSigningIn = false
 
@@ -61,6 +63,11 @@ final class AppModel {
     /// Apps for the launcher (kind `app`), in web launcher order.
     var apps: [AppModule] {
         AppModuleCatalog.sorted(modules.filter { $0.kind == .app })
+    }
+
+    /// The Apps grid on iPhone: the apps plus Dokumente, which has no tab of its own.
+    var launcherApps: [AppModule] {
+        modules.filter { $0.id == "documents" } + apps
     }
 
     func start() async {

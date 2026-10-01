@@ -18,6 +18,7 @@ public actor DemoService: LifeOSService {
         [
             AppModule(id: "today", label: "Heute", description: "Dein Tag auf einen Blick.", basePath: "/today", defaultPath: "", kind: .system, sensitivity: .normal),
             AppModule(id: "inbox", label: "Posteingang", description: "Schnelles Erfassen und Einsortieren neuer Inhalte.", basePath: "/inbox", defaultPath: "", kind: .system, sensitivity: .normal),
+            AppModule(id: "documents", label: "Dokumente", description: "Alle Dokumente aus allen Apps: suchen, öffnen, einsortieren.", basePath: "/documents", defaultPath: "", kind: .system, sensitivity: .normal),
             AppModule(id: "study", label: "Study Hub", description: "Kurrikulum, Sitzungen, Notizen, Ressourcen und Sammlungen.", basePath: "/study", defaultPath: "/start", kind: .app, sensitivity: .normal),
             AppModule(id: "productivity", label: "Aufgaben", description: "Aufgaben planen, erledigen und behalten.", basePath: "/productivity", defaultPath: "", kind: .app, sensitivity: .normal),
             AppModule(id: "calendar", label: "Kalender", description: "Termine, Abo-Kalender und Kalender-Verbindungen.", basePath: "/calendar", defaultPath: "", kind: .app, sensitivity: .normal),
@@ -77,6 +78,10 @@ public actor DemoService: LifeOSService {
         let row = Self.task(id: UUID().uuidString, title: task.title, status: .inbox, priority: task.priority, dueDate: task.dueDate)
         taskRows.insert(row, at: 0)
         return try row.decode()
+    }
+
+    public func createNote(_ note: NewNote) async throws -> CreatedNote {
+        CreatedNote(id: UUID().uuidString, title: note.title)
     }
 
     public func transitionTask(id: String, to status: TaskStatus) async throws -> LifeTask {
@@ -191,6 +196,44 @@ public actor DemoService: LifeOSService {
             ["id": "demo-fin-2", "kind": "contract", "title": "Hausratversicherung", "counterparty": "Versicherung", "amount": .null, "currency": "EUR", "document_date": "2026-01-02", "original_filename": "hausrat.pdf"],
         ]
         return try payload.decode()
+    }
+
+    public func documents(app: String?, query: String?) async throws -> DocumentList {
+        let rows: [JSONValue] = [
+            Self.demoDocument(id: "demo-doc-1", app: "study", title: "Skript Niere", type: "lecture", snippet: "Die Niere filtert täglich rund 180 Liter Primärharn."),
+            Self.demoDocument(id: "demo-doc-2", app: "finance", title: "Mietvertrag", type: "contract", snippet: "Die Kündigungsfrist beträgt drei Monate."),
+        ]
+        let needle = (query ?? "").lowercased()
+        let visible = rows.filter { row in
+            (app == nil || row["app"]?.stringValue == app)
+                && (needle.isEmpty || (row["title"]?.stringValue ?? "").lowercased().contains(needle) || (row["snippet"]?.stringValue ?? "").lowercased().contains(needle))
+        }
+        let payload: JSONValue = [
+            "data": .array(visible.map { row in
+                guard case var .object(fields) = row else { return row }
+                if needle.isEmpty { fields["snippet"] = .null }
+                return .object(fields)
+            }),
+            "meta": [
+                "apps": [["id": "study", "label": "Study Hub", "locked": false], ["id": "finance", "label": "Finance", "locked": false], ["id": "health", "label": "Health", "locked": true]],
+                "total": .number(Double(visible.count)),
+            ],
+        ]
+        return try payload.decode()
+    }
+
+    public func documentFileURL(documentId: String, versionId: String) async throws -> URL {
+        URL(string: "https://example.com/demo.pdf")!
+    }
+
+    private static func demoDocument(id: String, app: String, title: String, type: String, snippet: String) -> JSONValue {
+        [
+            "id": .string(id), "app": .string(app), "title": .string(title), "document_type": .string(type), "links_count": 1, "snippet": .string(snippet),
+            "current_version": [
+                "id": .string("\(id)-v1"), "version_number": 1, "role": "original", "original_filename": .string("\(title).pdf"), "mime_type": "application/pdf",
+                "file_size_bytes": 204800, "checksum_sha256": .string(String(repeating: "a", count: 64)), "status": "available",
+            ],
+        ]
     }
 
     public func labReports() async throws -> [LabReport] {

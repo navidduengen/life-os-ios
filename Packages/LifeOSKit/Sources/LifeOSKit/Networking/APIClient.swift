@@ -68,6 +68,10 @@ public final class APIClient: LifeOSService, @unchecked Sendable {
         try await authorizedData(makeRequest("POST", "tasks", body: task))
     }
 
+    public func createNote(_ note: NewNote) async throws -> CreatedNote {
+        try await authorizedData(makeRequest("POST", "notes", body: note))
+    }
+
     public func transitionTask(id: String, to status: TaskStatus) async throws -> LifeTask {
         struct Body: Encodable { let status: TaskStatus }
         return try await authorizedData(makeRequest("PATCH", "tasks/\(id)/transition", body: Body(status: status)))
@@ -172,6 +176,18 @@ public final class APIClient: LifeOSService, @unchecked Sendable {
 
     public func labReports() async throws -> [LabReport] {
         try await get("health/lab-reports")
+    }
+
+    public func documents(app: String?, query: String?) async throws -> DocumentList {
+        var items: [URLQueryItem] = []
+        if let app { items.append(URLQueryItem(name: "app", value: app)) }
+        if let query, !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
+        return try await authorized(makeRequest("GET", "documents", query: items, body: Optional<String>.none))
+    }
+
+    public func documentFileURL(documentId: String, versionId: String) async throws -> URL {
+        let link: DocumentFileLink = try await get("documents/\(documentId)/versions/\(versionId)/file")
+        return link.url
     }
 
     // MARK: - Plumbing
