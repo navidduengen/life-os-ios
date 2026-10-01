@@ -5,12 +5,19 @@ import SwiftUI
 struct LifeOSApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model = AppModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(model)
                 .tint(Theme.brand)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // vault apps lock as soon as the app leaves the foreground
+            if phase == .background {
+                Task { await model.vault.lockAll() }
+            }
         }
     }
 }

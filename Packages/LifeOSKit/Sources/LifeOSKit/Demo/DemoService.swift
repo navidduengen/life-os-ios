@@ -166,6 +166,40 @@ public actor DemoService: LifeOSService {
     public func updatePushPreferences(_ preferences: [String: Bool]) async throws -> [String: Bool] { preferences }
     public func sendTestPush() async throws -> Int { 0 }
 
+    // Demo vault: enforced, unlocks after the local Face ID check without a server signature.
+    public func vaultStatus() async throws -> VaultStatus {
+        VaultStatus(
+            enforced: true,
+            apps: ["health", "finance"].map { VaultStatus.AppState(id: $0, unlocked: false, expiresAt: nil) },
+            credentials: [VaultStatus.Credential(id: "demo-key", kind: "device_key", deviceName: "Demo-Gerät", currentDevice: true)],
+            canPairDevice: false
+        )
+    }
+    public func registerVaultDeviceKey(publicKey: String, deviceName: String) async throws -> String { "demo-key" }
+    public func vaultChallenge(apps: [String]?) async throws -> VaultChallenge {
+        VaultChallenge(id: "demo-challenge", challenge: "demo", expiresIn: 120)
+    }
+    public func unlockVault(challengeId: String, credentialId: String, signature: String) async throws -> [String: Date] {
+        let until = Date().addingTimeInterval(15 * 60)
+        return ["health": until, "finance": until]
+    }
+    public func lockVault(app: String?) async throws {}
+
+    public func financeDocuments() async throws -> [FinanceDocument] {
+        let payload: JSONValue = [
+            ["id": "demo-fin-1", "kind": "invoice", "title": "Stromrechnung September", "counterparty": "Stadtwerke", "amount": .number(84.2), "currency": "EUR", "document_date": "2026-09-14", "original_filename": "strom.pdf"],
+            ["id": "demo-fin-2", "kind": "contract", "title": "Hausratversicherung", "counterparty": "Versicherung", "amount": .null, "currency": "EUR", "document_date": "2026-01-02", "original_filename": "hausrat.pdf"],
+        ]
+        return try payload.decode()
+    }
+
+    public func labReports() async throws -> [LabReport] {
+        let payload: JSONValue = [
+            ["id": "demo-lab-1", "title": "Blutbild Hausarzt", "lab_name": "Labor Mitte", "taken_on": "2026-09-17", "status": "extracted", "values_count": 24, "flagged_count": 2],
+        ]
+        return try payload.decode()
+    }
+
     public func signOut() async {}
 
     // MARK: - Fixtures

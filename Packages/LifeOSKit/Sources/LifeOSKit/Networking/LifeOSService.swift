@@ -23,5 +23,15 @@ public protocol LifeOSService: Sendable {
     func pushPreferences() async throws -> [String: Bool]
     func updatePushPreferences(_ preferences: [String: Bool]) async throws -> [String: Bool]
     func sendTestPush() async throws -> Int
+    func vaultStatus() async throws -> VaultStatus
+    /// `publicKey`: base64 X9.63 P-256 point of the Secure Enclave key. Returns the credential id.
+    func registerVaultDeviceKey(publicKey: String, deviceName: String) async throws -> String
+    /// `apps` nil means every vault app.
+    func vaultChallenge(apps: [String]?) async throws -> VaultChallenge
+    /// `signature`: base64 DER ECDSA over `VaultChallenge.message`. Returns app id → unlocked until.
+    func unlockVault(challengeId: String, credentialId: String, signature: String) async throws -> [String: Date]
+    func lockVault(app: String?) async throws
+    func financeDocuments() async throws -> [FinanceDocument]
+    func labReports() async throws -> [LabReport]
     func signOut() async
 }

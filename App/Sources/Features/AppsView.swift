@@ -50,8 +50,8 @@ struct AppCard: View {
     }
 }
 
-/// Where an app tile leads. Native screens exist for Aufgaben and Kalender;
-/// vault apps are locked until device-key unlock exists on the server.
+/// Where an app tile leads. Native screens exist for Aufgaben, Kalender,
+/// Posteingang and Heute, plus the vault apps behind Face ID / Touch ID.
 struct AppDestination: View {
     let module: AppModule
 
@@ -61,9 +61,11 @@ struct AppDestination: View {
         case "calendar": CalendarView()
         case "inbox": InboxView()
         case "today": TodayView()
+        case "finance": VaultGate(module: module) { FinanceDocumentsView() }
+        case "health": VaultGate(module: module) { LabReportsView() }
         default:
             if module.sensitivity == .vault {
-                VaultLockedView(module: module)
+                VaultGate(module: module) { ComingSoonView(module: module) }
             } else {
                 ComingSoonView(module: module)
             }
@@ -92,28 +94,5 @@ struct ComingSoonView: View {
     private var webURL: URL? {
         guard !model.isDemo, let base = model.serverURL else { return nil }
         return base.appendingPathComponent(String((module.basePath + module.defaultPath).dropFirst()))
-    }
-}
-
-/// Health and Finance need a server-enforced unlock (ADR-031-004 §4): Face ID
-/// signs a server challenge with a Secure Enclave key. Hiding the screen
-/// behind Face ID alone is not allowed, so until the server side exists the
-/// app does not show vault data at all.
-struct VaultLockedView: View {
-    let module: AppModule
-
-    var body: some View {
-        ContentUnavailableView {
-            Label { Text(module.label) } icon: { AppIconTile(module: module, size: 64) }
-        } description: {
-            Text("\(module.label) ist eine Tresor-App. Entsperren per Face ID kommt, sobald der Server Geräteschlüssel prüfen kann.")
-        } actions: {
-            Button {} label: {
-                Label("Mit Face ID entsperren", systemImage: "faceid")
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(true)
-        }
-        .navigationTitle(module.label)
     }
 }

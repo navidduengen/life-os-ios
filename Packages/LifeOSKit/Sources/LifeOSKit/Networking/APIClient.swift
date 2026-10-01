@@ -136,6 +136,44 @@ public final class APIClient: LifeOSService, @unchecked Sendable {
         return sent.devices
     }
 
+    // MARK: - Vault
+
+    public func vaultStatus() async throws -> VaultStatus {
+        try await get("vault")
+    }
+
+    public func registerVaultDeviceKey(publicKey: String, deviceName: String) async throws -> String {
+        struct Body: Encodable { let publicKey: String; let deviceName: String }
+        struct Created: Decodable { let credentialId: String }
+        let created: Created = try await authorizedData(makeRequest("POST", "vault/device-key", body: Body(publicKey: publicKey, deviceName: deviceName)))
+        return created.credentialId
+    }
+
+    public func vaultChallenge(apps: [String]?) async throws -> VaultChallenge {
+        struct Body: Encodable { let apps: [String]? }
+        return try await authorizedData(makeRequest("POST", "vault/challenge", body: Body(apps: apps)))
+    }
+
+    public func unlockVault(challengeId: String, credentialId: String, signature: String) async throws -> [String: Date] {
+        struct Body: Encodable { let challengeId: String; let credentialId: String; let signature: String }
+        struct Unlocked: Decodable { let apps: [String: Date] }
+        let unlocked: Unlocked = try await authorizedData(makeRequest("POST", "vault/unlock", body: Body(challengeId: challengeId, credentialId: credentialId, signature: signature)))
+        return unlocked.apps
+    }
+
+    public func lockVault(app: String?) async throws {
+        struct Body: Encodable { let app: String? }
+        try await authorizedNoContent(makeRequest("POST", "vault/lock", body: Body(app: app)))
+    }
+
+    public func financeDocuments() async throws -> [FinanceDocument] {
+        try await get("finance/documents")
+    }
+
+    public func labReports() async throws -> [LabReport] {
+        try await get("health/lab-reports")
+    }
+
     // MARK: - Plumbing
 
     /// For endpoints that answer `204 No Content`.
