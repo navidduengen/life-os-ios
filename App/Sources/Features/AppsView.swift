@@ -10,7 +10,7 @@ struct AppsView: View {
     var body: some View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: Theme.spacing) {
-                ForEach(model.apps) { app in
+                ForEach(model.launcherApps) { app in
                     NavigationLink(value: app.id) {
                         AppCard(module: app)
                     }
@@ -61,6 +61,7 @@ struct AppDestination: View {
         case "calendar": CalendarView()
         case "inbox": InboxView()
         case "today": TodayView()
+        case "documents": DocumentsView()
         case "finance": VaultGate(module: module) { FinanceDocumentsView() }
         case "health": VaultGate(module: module) { LabReportsView() }
         default:

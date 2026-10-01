@@ -174,6 +174,18 @@ public final class APIClient: LifeOSService, @unchecked Sendable {
         try await get("health/lab-reports")
     }
 
+    public func documents(app: String?, query: String?) async throws -> DocumentList {
+        var items: [URLQueryItem] = []
+        if let app { items.append(URLQueryItem(name: "app", value: app)) }
+        if let query, !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
+        return try await authorized(makeRequest("GET", "documents", query: items, body: Optional<String>.none))
+    }
+
+    public func documentFileURL(documentId: String, versionId: String) async throws -> URL {
+        let link: DocumentFileLink = try await get("documents/\(documentId)/versions/\(versionId)/file")
+        return link.url
+    }
+
     // MARK: - Plumbing
 
     /// For endpoints that answer `204 No Content`.

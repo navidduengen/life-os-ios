@@ -63,6 +63,11 @@ final class AppModel {
         AppModuleCatalog.sorted(modules.filter { $0.kind == .app })
     }
 
+    /// The Apps grid on iPhone: the apps plus Dokumente, which has no tab of its own.
+    var launcherApps: [AppModule] {
+        modules.filter { $0.id == "documents" } + apps
+    }
+
     func start() async {
         guard phase == .launching else { return }
         if defaults.bool(forKey: Keys.demo) {

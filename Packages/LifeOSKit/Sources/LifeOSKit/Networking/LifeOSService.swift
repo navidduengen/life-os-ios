@@ -33,5 +33,9 @@ public protocol LifeOSService: Sendable {
     func lockVault(app: String?) async throws
     func financeDocuments() async throws -> [FinanceDocument]
     func labReports() async throws -> [LabReport]
+    /// Documents of all apps; `query` also searches the extracted text.
+    func documents(app: String?, query: String?) async throws -> DocumentList
+    /// A short-lived signed link to the file of a version.
+    func documentFileURL(documentId: String, versionId: String) async throws -> URL
     func signOut() async
 }
