@@ -181,7 +181,7 @@ actor TokenRefresher {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONSerialization.data(withJSONObject: ["refresh_token": current.refreshToken])
 
-            let (data, response) = try await urlSession.data(for: request)
+            let (data, response) = try await session.data(for: request)
             guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { throw APIError.unauthorized }
             let pair = try LifeOSJSON.makeDecoder().decode(TokenResponse.self, from: data).pair()
             tokens.save(pair)

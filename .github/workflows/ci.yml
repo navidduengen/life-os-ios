@@ -37,10 +37,8 @@ jobs:
         run: xcodegen generate
       - name: Build
         run: |
-          set -o pipefail
-          xcodebuild build \
+          xcodebuild build -quiet \
             -project LifeOS.xcodeproj \
             -scheme LifeOS \
             -destination '${{ matrix.destination }}' \
-            CODE_SIGNING_ALLOWED=NO \
-            | tail -n 200
+            CODE_SIGNING_ALLOWED=NO
