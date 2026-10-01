@@ -7,6 +7,12 @@ public struct VaultStatus: Decodable, Equatable, Sendable {
         public let id: String
         public let unlocked: Bool
         public let expiresAt: Date?
+
+        public init(id: String, unlocked: Bool, expiresAt: Date?) {
+            self.id = id
+            self.unlocked = unlocked
+            self.expiresAt = expiresAt
+        }
     }
 
     public struct Credential: Decodable, Equatable, Sendable, Identifiable {
@@ -14,6 +20,13 @@ public struct VaultStatus: Decodable, Equatable, Sendable {
         public let kind: String
         public let deviceName: String
         public let currentDevice: Bool
+
+        public init(id: String, kind: String, deviceName: String, currentDevice: Bool) {
+            self.id = id
+            self.kind = kind
+            self.deviceName = deviceName
+            self.currentDevice = currentDevice
+        }
     }
 
     public let enforced: Bool
@@ -31,23 +44,6 @@ public struct VaultStatus: Decodable, Equatable, Sendable {
     /// The key paired on this device, if any.
     public var deviceCredential: Credential? {
         credentials.first { $0.currentDevice && $0.kind == "device_key" }
-    }
-}
-
-extension VaultStatus.AppState {
-    public init(id: String, unlocked: Bool, expiresAt: Date?) {
-        self.id = id
-        self.unlocked = unlocked
-        self.expiresAt = expiresAt
-    }
-}
-
-extension VaultStatus.Credential {
-    public init(id: String, kind: String, deviceName: String, currentDevice: Bool) {
-        self.id = id
-        self.kind = kind
-        self.deviceName = deviceName
-        self.currentDevice = currentDevice
     }
 }
 
