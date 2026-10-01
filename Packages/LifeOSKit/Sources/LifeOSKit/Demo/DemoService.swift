@@ -80,6 +80,10 @@ public actor DemoService: LifeOSService {
         return try row.decode()
     }
 
+    public func createNote(_ note: NewNote) async throws -> CreatedNote {
+        CreatedNote(id: UUID().uuidString, title: note.title)
+    }
+
     public func transitionTask(id: String, to status: TaskStatus) async throws -> LifeTask {
         guard let index = taskRows.firstIndex(where: { $0["id"]?.stringValue == id }) else { throw APIError.notFound }
         guard let current = taskRows[index]["status"]?.stringValue.flatMap(TaskStatus.init(rawValue:)),

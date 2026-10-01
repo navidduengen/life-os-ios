@@ -46,8 +46,11 @@ struct InboxView: View {
             .refreshable { await load() }
         }
         .navigationTitle("Posteingang")
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { AccountButton() } }
-        .task { await load() }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { QuickCaptureButton(compactOnly: true) }
+            ToolbarItem(placement: .topBarTrailing) { AccountButton() }
+        }
+        .task(id: model.captureCount) { await load() }
     }
 
     private func chip(_ label: String, count: Int, type: InboxItem.ItemType?) -> some View {

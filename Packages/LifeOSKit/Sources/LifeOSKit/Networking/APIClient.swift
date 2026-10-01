@@ -68,6 +68,10 @@ public final class APIClient: LifeOSService, @unchecked Sendable {
         try await authorizedData(makeRequest("POST", "tasks", body: task))
     }
 
+    public func createNote(_ note: NewNote) async throws -> CreatedNote {
+        try await authorizedData(makeRequest("POST", "notes", body: note))
+    }
+
     public func transitionTask(id: String, to status: TaskStatus) async throws -> LifeTask {
         struct Body: Encodable { let status: TaskStatus }
         return try await authorizedData(makeRequest("PATCH", "tasks/\(id)/transition", body: Body(status: status)))
