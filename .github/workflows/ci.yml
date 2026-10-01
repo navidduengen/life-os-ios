@@ -16,7 +16,9 @@ jobs:
       - uses: actions/checkout@v5
       - name: Swift test
         working-directory: Packages/LifeOSKit
-        run: swift test
+        run: |
+          set -o pipefail
+          swift test 2>&1 | tee test.log || { ../../scripts/ci-annotate.sh test.log; exit 1; }
 
   app:
     name: App build (${{ matrix.name }})
@@ -37,12 +39,13 @@ jobs:
         run: xcodegen generate
       - name: Build
         run: |
+          set -o pipefail
           xcodebuild build -quiet \
             -project LifeOS.xcodeproj \
             -scheme LifeOS \
             -destination '${{ matrix.destination }}' \
             -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build.log || { scripts/ci-annotate.sh build.log; exit 1; }
       - name: Check Info.plist privacy texts
         if: matrix.name == 'iPhone/iPad'
         run: |
