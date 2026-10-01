@@ -2,7 +2,12 @@
 
 Die App erwartet die folgenden Endpunkte im Life-OS-Backend (`navidduengen/life-os-prototype`). Sie setzen ADR-031-004 §2 und Schritt 5 der Umsetzungsreihenfolge um („Sanctum-Bearer-Tokens mit Scopes und Gerätekopplung, sobald die erste native App kommt“).
 
-**Stand 2026-10-01: umgesetzt** auf `life-os-prototype` main (`NativeAuthController`, `NativeAppTokens`, `NativeAuthCode`/`NativeRefreshToken`/`NativeDevice`, Migration `2026_10_01_210000_create_native_app_auth_tables`, `ValidateCsrfTokenUnlessBearer`, Test `tests/Feature/Auth/NativeAppTokensTest.php`). Abschnitte 1–5 gelten; Abweichungen vom ursprünglichen Entwurf sind unten markiert. Frühere Aussage „Endpunkte fehlen, nur Demo-Modus“ ist überholt.
+**Stand 2026-10-01** (zwei Ebenen, bitte nicht vermischen):
+
+- **Auf `life-os-prototype` main `9a99396`:** Abschnitte 1–4 und aus §5 `auth:sanctum` auf `/api/v1`, CSRF nur für Cookie-Requests (`ValidateCsrfTokenUnlessBearer`) und die Geräteliste `/api/v1/settings/devices`. Dazu `NativeAuthController`, `NativeAppTokens`, `NativeAuthCode`/`NativeRefreshToken`/`NativeDevice`, Migration `2026_10_01_210000_create_native_app_auth_tables`, Test `tests/Feature/Auth/NativeAppTokensTest.php`. Tokens tragen dort noch `['*']`; Abilities pro Route gibt es auf main **nicht**.
+- **Vorbereitet in [life-os-prototype#32](https://github.com/navidduengen/life-os-prototype/pull/32)** (Branch `claude/release-readiness`, Stand `eb86bf6`, nicht gemergt, PHP-Tests unverifiziert): Scopes pro Bereich (`EnsureTokenAbility`, `NativeAppTokens::NATIVE_AREAS`) und der Rücksprung `?redirect=` für Logins, die in der SPA enden (Passkey). Für Passkeys gehört der Gegenstück-Commit `7478aff` auf PR #20 dazu.
+
+Die frühere Aussage „Endpunkte fehlen, nur Demo-Modus“ ist überholt.
 
 Abgleich Client ↔ Server (statisch geprüft, 2026-10-01, prototype `9a99396`, iOS `5034e34`): Pfade, JSON-Feldnamen (snake_case), PKCE-Längen (Verifier 43 Zeichen, Challenge 43), `state`, Antwort `{access_token, refresh_token, expires_in}`, Fehlercodes (400 bei Code, 401 bei Refresh) und Logout passen.
 
@@ -20,7 +25,7 @@ Alle Antworten sind JSON, Fehler im bekannten Envelope `{ "message", "errors"? }
 | `state` | zufällig, wird unverändert zurückgegeben |
 | `device_name` | z. B. „iPhone von Navid“, für die Geräteliste in den Einstellungen |
 
-Ablauf: Ist der Nutzer nicht angemeldet, läuft der normale Web-Login (`redirect()->guest()` → Login → `redirect()->intended()`; welcher Anbieter, legt ADR-031-004 fest) und kommt danach hierher zurück. *Umgesetzt mit Zwischenschritt:* Der Server zeigt eine Bestätigungsseite („Life OS App anmelden?“), erst nach „Anmelden“ (`POST /auth/native/authorize`) kommt der Code. Dann erzeugt der Server einen **Einmal-Code** (zufällig, nur gehasht gespeichert, 60 Sekunden gültig, einmal einlösbar), gebunden an `user_id`, `code_challenge` und `device_name`, und leitet weiter:
+Ablauf: Ist der Nutzer nicht angemeldet, läuft der normale Web-Login (`redirect()->guest()` → Login → `redirect()->intended()`; welcher Anbieter, legt ADR-031-004 fest) und kommt danach hierher zurück. *Auf main mit Zwischenschritt:* Der Server zeigt eine Bestätigungsseite („Life OS App anmelden?“), erst nach „Anmelden“ (`POST /auth/native/authorize`) kommt der Code. Dann erzeugt der Server einen **Einmal-Code** (zufällig, nur gehasht gespeichert, 60 Sekunden gültig, einmal einlösbar), gebunden an `user_id`, `code_challenge` und `device_name`, und leitet weiter:
 
 ```
 302 Location: lifeos://auth/callback?code=<code>&state=<state>
@@ -44,7 +49,7 @@ Prüfung: Code existiert, nicht abgelaufen, noch nicht eingelöst, `SHA-256(code
 { "access_token": "…", "refresh_token": "…", "expires_in": 900 }
 ```
 
-- Access-Token: Sanctum Personal Access Token, 15 Minuten, Name = `device_name`. *Umgesetzt:* Abilities `<bereich>:read` und `<bereich>:write` für die Bereiche in `NativeAppTokens::NATIVE_AREAS` (session, app-modules, home, today, tasks, notes, calendar, inbox, search, documents, links, health, finance, push, vault, settings.devices).
+- Access-Token: Sanctum Personal Access Token, 15 Minuten, Name = `device_name`. Auf main: `['*']`. *Mit #32:* Abilities `<bereich>:read` und `<bereich>:write` für die Bereiche in `NativeAppTokens::NATIVE_AREAS` (session, app-modules, home, today, tasks, notes, calendar, inbox, search, documents, links, health, finance, push, vault, settings.devices).
 - Refresh-Token: eigener zufälliger Wert, nur gehasht gespeichert, an dasselbe Gerät gebunden, lange gültig (Vorschlag 60 Tage gleitend).
 
 ## 3. Erneuern
@@ -60,11 +65,13 @@ Die App serialisiert Refreshes, schickt also nie zwei gleichzeitig.
 
 `DELETE /auth/native/token` mit `Authorization: Bearer <access_token>` → `204`. Widerruft Access- und Refresh-Token des Geräts.
 
+Abmelden in der App ist **best effort**: Die App erneuert einen abgelaufenen Access-Token zuerst und widerruft dann (iOS #6). Scheitert das (offline, Server nicht erreichbar, Refresh abgelehnt), löscht die App die Tokens nur lokal; serverseitig bleibt das Gerät angemeldet, bis der Refresh-Token abläuft (60 Tage) oder das Gerät im Web unter Einstellungen › Geräte widerrufen wird. Nach Verlust oder Diebstahl eines Geräts deshalb immer im Web widerrufen.
+
 ## 5. `/api/v1` mit Bearer-Token
 
 - `auth:sanctum` statt nur `auth` auf der `/api/v1`-Gruppe, damit Session (Web) und Bearer (App) beide funktionieren.
 - CSRF gilt nur für Cookie-Requests. Requests mit `Authorization: Bearer` und ohne Session-Cookie dürfen keinen `419` bekommen.
-- Abilities pro Route prüfen. *Umgesetzt:* `EnsureTokenAbility` auf der ganzen `/api/v1`-Gruppe leitet die Ability aus dem Routennamen ab (`api.v1.tasks.store` → `tasks:write`; GET = `read`, sonst `write`; Einstellungen pro Unterbereich, z. B. `settings.devices:read`). Fehlt sie, `403`. Für App-Tokens gesperrt: Study, Sammlungen, Ressourcen, Integrationen, Onboarding und alle Einstellungen außer Geräte (Passwort, Profil, Admin, KI-Provider). Braucht die App einen neuen Bereich, muss er in `NATIVE_AREAS` ergänzt werden; sonst bekommt sie 403.
+- Abilities pro Route prüfen. *Nicht auf main, vorbereitet in #32:* `EnsureTokenAbility` auf der ganzen `/api/v1`-Gruppe leitet die Ability aus dem Routennamen ab (`api.v1.tasks.store` → `tasks:write`; GET = `read`, sonst `write`; Einstellungen pro Unterbereich, z. B. `settings.devices:read`). Fehlt sie, `403`. Für App-Tokens gesperrt: Study, Sammlungen, Ressourcen, Integrationen, Onboarding und alle Einstellungen außer Geräte (Passwort, Profil, Admin, KI-Provider). Braucht die App einen neuen Bereich, muss er in `NATIVE_AREAS` ergänzt werden; sonst bekommt sie 403.
 - Geräte in den Einstellungen anzeigen und einzeln widerrufen (`/api/v1/settings/devices`, ADR-031-004 §2).
 
 ## 6. Tresor-Entsperrung (später)
