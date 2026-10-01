@@ -44,7 +44,7 @@ Prüfung: Code existiert, nicht abgelaufen, noch nicht eingelöst, `SHA-256(code
 { "access_token": "…", "refresh_token": "…", "expires_in": 900 }
 ```
 
-- Access-Token: Sanctum Personal Access Token, 15 Minuten, Name = `device_name`. *Umgesetzt:* Abilities `<bereich>:read` und `<bereich>:write` für die Bereiche in `NativeAppTokens::NATIVE_AREAS` (session, app-modules, home, today, tasks, notes, calendar, inbox, search, documents, health, finance, push, unlock, settings.devices).
+- Access-Token: Sanctum Personal Access Token, 15 Minuten, Name = `device_name`. *Umgesetzt:* Abilities `<bereich>:read` und `<bereich>:write` für die Bereiche in `NativeAppTokens::NATIVE_AREAS` (session, app-modules, home, today, tasks, notes, calendar, inbox, search, documents, links, health, finance, push, vault, settings.devices).
 - Refresh-Token: eigener zufälliger Wert, nur gehasht gespeichert, an dasselbe Gerät gebunden, lange gültig (Vorschlag 60 Tage gleitend).
 
 ## 3. Erneuern
