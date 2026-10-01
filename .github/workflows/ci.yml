@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kit:
+    name: LifeOSKit tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+      - name: Swift test
+        working-directory: Packages/LifeOSKit
+        run: swift test
+
+  app:
+    name: App build (${{ matrix.name }})
+    runs-on: macos-15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: iPhone/iPad
+            destination: generic/platform=iOS Simulator
+          - name: Mac
+            destination: platform=macOS,variant=Mac Catalyst
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+      - name: Build
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project LifeOS.xcodeproj \
+            -scheme LifeOS \
+            -destination '${{ matrix.destination }}' \
+            CODE_SIGNING_ALLOWED=NO \
+            | tail -n 200
