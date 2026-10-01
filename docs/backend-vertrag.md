@@ -72,6 +72,39 @@ Für Health und Finance, nach ADR-031-004 §4:
 3. `POST /api/v1/unlock` mit `{ "app", "credential_id", "challenge", "signature" }` → Server prüft die ECDSA-Signatur und setzt die Entsperrung für dieses Token und diese App für z. B. 10 Minuten.
 4. Ohne Entsperrung antworten Vault-Routen mit `423` und `code: step_up_required`. Die App behandelt das bereits als eigenen Fehlerfall.
 
+## 7. Apple Health (umgesetzt in `life-os-prototype`, Branch `claude/apple-health-import`)
+
+| Endpunkt | Zweck |
+| :--- | :--- |
+| `POST /api/v1/health/apple-health/import` | `{samples: [...], deleted: [UUID]}`, je höchstens 500. Upsert pro Nutzer auf `external_id` (HealthKit-UUID). |
+| `GET /api/v1/health/apple-health/types` | Pro Datentyp Anzahl, Zeitraum, letzter Wert (Web-Übersicht). |
+| `GET /api/v1/health/apple-health/samples` | Einträge eines Typs, paginiert. |
+| `GET /api/v1/health/apple-health/daily` | Tageswerte (Summe, Durchschnitt, Min, Max, Dauer) in Berliner Zeit. |
+| `DELETE /api/v1/health/apple-health` | Alles oder `?type=` löschen. |
+
+Die App schickt Metadaten-Schlüssel schon in snake_case und FHIR-JSON von Gesundheitsakten als Text (`fhir_json`), weil der JSON-Encoder sonst auch Schlüssel in Wörterbüchern umschreibt. Der Typ-Katalog (207 Typen) kommt aus `scripts/health_types.py` und wird für App und Web erzeugt:
+
+```bash
+python3 scripts/health_types.py ../life-os-prototype
+```
+
+Der Import ist nur schreibend. Sobald die Tresor-Entsperrung (Abschnitt 6) steht, sollten die lesenden Apple-Health-Endpunkte hinter `app.unlocked:health`; der Import braucht dann nur einen Token mit Scope `health:import`.
+
+## 8. Push-Mitteilungen (umgesetzt, standardmäßig aus)
+
+Schalter im Backend: `PUSH_NOTIFICATIONS_ENABLED=true` **und** APNs-Schlüssel (`APNS_KEY_ID`, `APNS_TEAM_ID`, `APNS_PRIVATE_KEY` mit dem Inhalt der `.p8`-Datei, `APNS_BUNDLE_ID`, `APNS_ENVIRONMENT`). Erst dann meldet `GET /api/v1/push/config` `enabled: true`. Die App zeigt vorher keine Push-Einstellungen, fragt keine Erlaubnis ab und registriert kein Gerät. Das Feature lässt sich also ohne App-Update später einschalten.
+
+| Endpunkt | Zweck |
+| :--- | :--- |
+| `GET /api/v1/push/config` | `enabled` und die Arten von Mitteilungen |
+| `POST/DELETE /api/v1/push/devices` | Gerätetoken registrieren oder abmelden (`409`, solange Push aus ist) |
+| `GET/PATCH /api/v1/push/preferences` | Arten an- und abschalten |
+| `POST /api/v1/push/test` | Testmitteilung an alle eigenen Geräte |
+
+Gesendet wird: Termin in 15 Minuten (alle 5 Minuten geprüft), morgendliche Liste fälliger Aufgaben (07:30, `PUSH_DIGEST_TIME`), „Befund ausgelesen“ nach dem Auslesen eines Bluttests. Texte nennen nie Werte, weil sie auf dem Sperrbildschirm stehen. Jede Erinnerung geht pro Nutzer nur einmal raus (`push_deliveries`).
+
+Zum Einschalten in Apple Developer: App-ID `app.lifeos.ios` mit Push Notifications und HealthKit (inkl. Clinical Health Records und Background Delivery), einen APNs-Schlüssel anlegen und in Doppler eintragen. Für TestFlight/App Store `APNS_ENVIRONMENT=production` und in `App/LifeOS.entitlements` `aps-environment` auf `production`.
+
 ## Was die App sonst vom Backend nutzt
 
 | Endpunkt | Bildschirm |

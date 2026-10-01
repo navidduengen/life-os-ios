@@ -81,7 +81,86 @@ public final class APIClient: LifeOSService, @unchecked Sendable {
         try await authorized(makeRequest("GET", "inbox", body: Optional<String>.none))
     }
 
+    public func importHealth(_ batch: HealthImportBatch) async throws -> HealthImportResult {
+        try await authorizedData(makeRequest("POST", "health/apple-health/import", body: batch))
+    }
+
+    public func deleteImportedHealth(type: String?) async throws -> Int {
+        struct Deleted: Decodable { let deleted: Int }
+        let query = type.map { [URLQueryItem(name: "type", value: $0)] } ?? []
+        let result: Deleted = try await authorizedData(makeRequest("DELETE", "health/apple-health", query: query, body: Optional<String>.none))
+        return result.deleted
+    }
+
+    public func pushConfig() async throws -> PushConfig {
+        try await get("push/config")
+    }
+
+    public func registerPushDevice(_ registration: PushDeviceRegistration) async throws {
+        struct Ignored: Decodable {}
+        let _: DataEnvelope<Ignored> = try await authorized(makeRequest("POST", "push/devices", body: registration))
+    }
+
+    public func unregisterPushDevice(token: String) async throws {
+        struct Body: Encodable { let deviceToken: String }
+        try await authorizedNoContent(makeRequest("DELETE", "push/devices", body: Body(deviceToken: token)))
+    }
+
+    public func pushPreferences() async throws -> [String: Bool] {
+        let raw: [String: Bool] = try await get("push/preferences")
+        return Self.snakeCaseKeys(raw)
+    }
+
+    public func updatePushPreferences(_ preferences: [String: Bool]) async throws -> [String: Bool] {
+        let raw: [String: Bool] = try await authorizedData(makeRequest("PATCH", "push/preferences", body: preferences))
+        return Self.snakeCaseKeys(raw)
+    }
+
+    /// The decoder turns dictionary keys into camelCase (`tasks_due` →
+    /// `tasksDue`); preference ids must stay as the server named them.
+    static func snakeCaseKeys(_ dictionary: [String: Bool]) -> [String: Bool] {
+        Dictionary(uniqueKeysWithValues: dictionary.map { key, value in
+            (key.reduce(into: "") { result, character in
+                if character.isUppercase {
+                    result += "_" + character.lowercased()
+                } else {
+                    result.append(character)
+                }
+            }, value)
+        })
+    }
+
+    public func sendTestPush() async throws -> Int {
+        struct Sent: Decodable { let devices: Int }
+        let sent: Sent = try await authorizedData(makeRequest("POST", "push/test", body: Optional<String>.none))
+        return sent.devices
+    }
+
     // MARK: - Plumbing
+
+    /// For endpoints that answer `204 No Content`.
+    private func authorizedNoContent(_ request: URLRequest) async throws {
+        do {
+            try await sendExpectingNoContent(request, token: try await refresher.validAccessToken())
+        } catch APIError.unauthorized {
+            try await sendExpectingNoContent(request, token: try await refresher.forceRefresh())
+        }
+    }
+
+    private func sendExpectingNoContent(_ request: URLRequest, token: String) async throws {
+        var request = request
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await urlSession.data(for: request)
+        } catch {
+            throw APIError.transport(error.localizedDescription)
+        }
+        guard let http = response as? HTTPURLResponse else { throw APIError.transport("Keine HTTP-Antwort") }
+        guard (200..<300).contains(http.statusCode) else {
+            throw APIError.from(status: http.statusCode, body: data, decoder: decoder)
+        }
+    }
 
     private func get<T: Decodable>(_ path: String) async throws -> T {
         try await authorizedData(makeRequest("GET", path, body: Optional<String>.none))

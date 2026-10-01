@@ -143,6 +143,29 @@ public actor DemoService: LifeOSService {
         return try payload.decode()
     }
 
+    /// Demo mode keeps imported Apple Health samples in memory, keyed by HealthKit UUID.
+    private var healthSamples: [String: HealthSamplePayload] = [:]
+
+    public func importHealth(_ batch: HealthImportBatch) async throws -> HealthImportResult {
+        for sample in batch.samples { healthSamples[sample.externalId] = sample }
+        let deleted = batch.deleted.filter { healthSamples.removeValue(forKey: $0) != nil }.count
+        return HealthImportResult(imported: batch.samples.count, deleted: deleted)
+    }
+
+    public func deleteImportedHealth(type: String?) async throws -> Int {
+        let doomed = healthSamples.values.filter { type == nil || $0.type == type }.map(\.externalId)
+        for id in doomed { healthSamples.removeValue(forKey: id) }
+        return doomed.count
+    }
+
+    /// Push stays off in demo mode, like on a server without an APNs key.
+    public func pushConfig() async throws -> PushConfig { .disabled }
+    public func registerPushDevice(_ registration: PushDeviceRegistration) async throws {}
+    public func unregisterPushDevice(token: String) async throws {}
+    public func pushPreferences() async throws -> [String: Bool] { [:] }
+    public func updatePushPreferences(_ preferences: [String: Bool]) async throws -> [String: Bool] { preferences }
+    public func sendTestPush() async throws -> Int { 0 }
+
     public func signOut() async {}
 
     // MARK: - Fixtures

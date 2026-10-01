@@ -25,6 +25,12 @@ final class AppModel {
     private let defaults = UserDefaults.standard
     private let tokens = KeychainTokenStore()
     private let authenticator = WebAuthenticator()
+    /// Apple Health import; asks for `service` on every sync so it always uses the current backend.
+    @ObservationIgnored let health = HealthSyncManager()
+    /// Push notifications; stays inert while the server has push switched off.
+    @ObservationIgnored let push = PushManager()
+    /// Path a notification asked to open (`/productivity`, `/calendar`, …); the tab views follow it.
+    var requestedRoute: String?
 
     private enum Keys {
         static let serverURL = "serverURL"
@@ -33,6 +39,11 @@ final class AppModel {
 
     init() {
         serverURLString = UserDefaults.standard.string(forKey: Keys.serverURL) ?? "https://"
+        health.serviceProvider = { [weak self] in self?.service ?? DemoService() }
+        push.serviceProvider = { [weak self] in self?.service ?? DemoService() }
+        push.openRoute = { [weak self] route in self?.requestedRoute = route }
+        // Set here, not in a view, so a tap that launches the app is not lost.
+        AppDelegate.push = push
     }
 
     var serverURL: URL? {
@@ -58,6 +69,9 @@ final class AppModel {
         } else {
             phase = .signedOut
         }
+        // Observer queries must be registered at every launch, or iOS cannot
+        // wake the app for new Apple Health data.
+        await health.refreshBackgroundDelivery()
     }
 
     func enterDemo() async {
@@ -98,11 +112,13 @@ final class AppModel {
     }
 
     func signOut() async {
+        await push.unregister()
         await service.signOut()
         defaults.set(false, forKey: Keys.demo)
         isDemo = false
         user = nil
         modules = []
+        health.resetForNewAccount()
         service = DemoService()
         phase = .signedOut
     }
@@ -114,6 +130,7 @@ final class AppModel {
             self.user = try await user
             self.modules = try await modules
             phase = .signedIn
+            await push.refresh()
         } catch {
             loginError = (error as? APIError)?.message ?? "Konto konnte nicht geladen werden."
             phase = .signedOut

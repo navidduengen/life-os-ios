@@ -10,6 +10,8 @@ Native Client für [Life OS](https://github.com/navidduengen/life-os-prototype):
 | Kalender | Monats-Agenda, Filter-Chips nach Quelle, Termin-Details | gleich |
 | Posteingang | Liste mit Typ-Filter | gleich |
 | Health, Finance | gesperrt, bis der Server Face-ID-Entsperrung prüft | gleich |
+| Apple Health | Import von 207 Datentypen, pro Typ oder Gruppe wählbar, im Hintergrund (Konto › Apple Health) | auf dem Mac nicht verfügbar |
+| Mitteilungen | Termine, fällige Aufgaben, ausgelesene Befunde; erst sichtbar, wenn der Server Push einschaltet | gleich |
 | Study Hub | Platzhalter mit Link in die Web-App | gleich |
 
 Ohne Server läuft die App im **Demo-Modus** mit Beispieldaten („Demo ohne Server ansehen“ auf dem Login-Bildschirm).
@@ -21,7 +23,10 @@ App/                    SwiftUI-App (iOS 17+, Mac Catalyst 14+)
   Sources/AppModel.swift      Zustand: Server, Anmeldung, aktivierte Apps
   Sources/Features/           Bildschirme
   Sources/Design/             Farben, 44-pt-Maß, Ladezustände
-Packages/LifeOSKit/     Swift Package ohne UI: Modelle, API-Client, Login, Demo-Daten
+  Sources/Health/             Apple-Health-Import (HealthKit, nur iPhone/iPad)
+  Sources/Push/               Push-Mitteilungen
+Packages/LifeOSKit/     Swift Package ohne UI: Modelle, API-Client, Login, Health-Katalog, Demo-Daten
+scripts/health_types.py Quelle des Apple-Health-Katalogs für App und Web
 docs/backend-vertrag.md Was das Backend für den App-Login noch braucht
 project.yml             XcodeGen-Projektdefinition
 ```

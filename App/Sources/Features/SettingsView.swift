@@ -23,6 +23,21 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("Daten") {
+                    NavigationLink {
+                        AppleHealthSettingsView()
+                    } label: {
+                        Label("Apple Health", systemImage: "heart.text.square")
+                    }
+                    if model.push.isAvailable {
+                        NavigationLink {
+                            PushSettingsView()
+                        } label: {
+                            Label("Mitteilungen", systemImage: "bell")
+                        }
+                    }
+                }
+
                 Section("Verbindung") {
                     LabeledContent("Server", value: model.isDemo ? "Demo-Daten" : (model.serverURL?.host ?? "–"))
                     LabeledContent("Apps", value: "\(model.apps.count)")

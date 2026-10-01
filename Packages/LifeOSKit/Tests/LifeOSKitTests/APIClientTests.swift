@@ -123,3 +123,42 @@ final class APIClientTests: XCTestCase {
         XCTAssertNil(StubURLProtocol.requests.first?.value(forHTTPHeaderField: "Authorization"))
     }
 }
+
+final class PushClientTests: XCTestCase {
+    override func setUp() {
+        StubURLProtocol.reset()
+    }
+
+    private func makeClient() -> APIClient {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [StubURLProtocol.self]
+        let tokens = InMemoryTokenStore(TokenPair(accessToken: "a", refreshToken: "r", expiresAt: Date().addingTimeInterval(3_600)))
+        return APIClient(baseURL: URL(string: "https://lifeos.example")!, tokens: tokens, session: URLSession(configuration: config))
+    }
+
+    func testPushPreferencesKeepServerIDs() async throws {
+        StubURLProtocol.replies["/api/v1/push/preferences"] = [.init(status: 200, body: #"{"data":{"tasks_due":true,"lab_report_ready":false}}"#)]
+        let preferences = try await makeClient().pushPreferences()
+        XCTAssertEqual(preferences, ["tasks_due": true, "lab_report_ready": false])
+    }
+
+    func testPushConfigAndDeviceRegistration() async throws {
+        StubURLProtocol.replies["/api/v1/push/config"] = [.init(status: 200, body: #"{"data":{"enabled":false,"kinds":[{"id":"tasks_due","label":"Fällige Aufgaben"}]}}"#)]
+        StubURLProtocol.replies["/api/v1/push/devices"] = [
+            .init(status: 201, body: #"{"data":{"id":"d1","platform":"ios","environment":"sandbox","device_name":null,"last_seen_at":null}}"#),
+            .init(status: 204, body: ""),
+        ]
+        let client = makeClient()
+        let config = try await client.pushConfig()
+        XCTAssertFalse(config.enabled)
+        XCTAssertEqual(config.kinds.first?.id, "tasks_due")
+
+        try await client.registerPushDevice(PushDeviceRegistration(deviceToken: "ab", environment: .sandbox, deviceName: "iPhone"))
+        try await client.unregisterPushDevice(token: "ab")
+        XCTAssertEqual(StubURLProtocol.requests.map(\.httpMethod), ["GET", "POST", "DELETE"])
+    }
+
+    func testDeviceTokenHex() {
+        XCTAssertEqual(PushDeviceRegistration.hex(Data([0x0A, 0xFF, 0x00])), "0aff00")
+    }
+}
