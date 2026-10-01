@@ -42,14 +42,14 @@ final class DocumentsTests: XCTestCase {
         XCTAssertEqual(StubURLProtocol.requests[0].value(forHTTPHeaderField: "Accept"), "application/json")
     }
 
-    func testLockedDocumentReportsTheApp() async {
+    func testLockedDocumentThrowsLocked() async {
         StubURLProtocol.replies["/api/v1/documents/d1/versions/v1/file"] = [.init(status: 423, body: #"{"message":"Gesperrt.","code":"step_up_required","app":"finance"}"#)]
 
         do {
             _ = try await makeClient().documentFileURL(documentId: "d1", versionId: "v1")
             XCTFail("expected locked")
-        } catch APIError.locked(let app) {
-            XCTAssertEqual(app, "finance")
+        } catch APIError.locked(let message) {
+            XCTAssertEqual(message, "Gesperrt.")
         } catch {
             XCTFail("unexpected \(error)")
         }

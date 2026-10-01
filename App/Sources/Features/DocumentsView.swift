@@ -116,8 +116,8 @@ struct DocumentsView: View {
         guard let version = document.currentVersion else { return }
         do {
             openURL(try await model.service.documentFileURL(documentId: document.id, versionId: version.id))
-        } catch APIError.locked(let lockedApp) {
-            model.vault.markLocked(lockedApp)
+        } catch APIError.locked {
+            model.vault.markLocked(document.app)
             openError = "Dieser Bereich ist gesperrt. Entsperre ihn unter Apps."
         } catch {
             openError = error.userMessage
