@@ -94,6 +94,7 @@ private struct SidebarLayout: View {
                 }
             }
             .navigationTitle("Life OS")
+            .toolbar { ToolbarItem(placement: .primaryAction) { QuickCaptureButton(withShortcut: true) } }
         } detail: {
             NavigationStack {
                 switch selection ?? .today {

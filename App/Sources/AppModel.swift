@@ -15,6 +15,8 @@ final class AppModel {
     private(set) var user: UserSession?
     private(set) var modules: [AppModule] = []
     private(set) var isDemo = false
+    /// Bumped after each quick capture, so lists such as the inbox reload.
+    var captureCount = 0
     var loginError: String?
     var isSigningIn = false
 

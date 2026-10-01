@@ -35,8 +35,11 @@ struct TodayView: View {
             .refreshable { await load() }
         }
         .navigationTitle(greeting)
-        .toolbar { ToolbarItem(placement: .topBarTrailing) { AccountButton() } }
-        .task { await load() }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { QuickCaptureButton(compactOnly: true) }
+            ToolbarItem(placement: .topBarTrailing) { AccountButton() }
+        }
+        .task(id: model.captureCount) { await load() }
     }
 
     private var greeting: String {

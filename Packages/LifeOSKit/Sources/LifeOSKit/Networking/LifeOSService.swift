@@ -9,6 +9,7 @@ public protocol LifeOSService: Sendable {
     func tasks(status: TaskStatus?, page: Int) async throws -> PaginatedEnvelope<LifeTask>
     func createTask(_ task: NewTask) async throws -> LifeTask
     func transitionTask(id: String, to status: TaskStatus) async throws -> LifeTask
+    func createNote(_ note: NewNote) async throws -> CreatedNote
     /// `month` as `YYYY-MM`.
     func calendar(month: String) async throws -> CalendarResponse
     func inbox() async throws -> InboxResponse
